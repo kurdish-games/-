@@ -1,1 +1,465 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>کێ فێڵبازە؟ - Word Game</title>
+    
+    <!-- Tailwind CSS بۆ ڕەنگ و دیزاین -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Babel بۆ خوێندنەوەی کۆدی ڕیاکت -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <!-- هێنانی React و ئایکۆنەکان بۆ ناو وێبگەڕ -->
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@18.2.0",
+          "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+          "lucide-react": "https://esm.sh/lucide-react@0.292.0?deps=react@18.2.0"
+        }
+      }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Rabar:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Rabar', Tahoma, Arial, sans-serif;
+            margin: 0;
+            background-color: #1e1b4b; /* باکگراوندی بنەڕەتی ئەگەر ئینتەرنێت خاو بوو */
+        }
+        
+        /* دیزاینی سکڕۆڵ */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
+        
+        .animate-fade-in { animation: fadeIn 0.5s ease-in-out; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { Users, Eye, EyeOff, Play, RefreshCw, AlertCircle, ShieldAlert, CheckCircle, Info, UserMinus } from 'lucide-react';
+
+        const WORD_PAIRS = [
+            ['سێو', 'پرتەقاڵ'], ['چای', 'قاوە'], ['پشیلە', 'سەگ'], ['زستان', 'هاوین'],
+            ['مانگ', 'خۆر'], ['مۆبایل', 'کۆمپیوتەر'], ['شاخ', 'دەشت'], ['قەڵەم', 'پەنسل'],
+            ['کتێب', 'گۆڤار'], ['نان', 'برنج'], ['ئۆتۆمبێل', 'فڕۆکە'], ['ماڵ', 'خێوەت'],
+            ['ئاڵتون', 'زیو'], ['ئاو', 'شەربەت'], ['دەریا', 'ڕووبار'], ['سلێمانی', 'هەولێر'],
+            ['پزیشک', 'پەرستار'], ['سەعات', 'ڕۆژمێر'], ['پاسکیل', 'ماتۆڕسکیل'], ['چشمە', 'ڕووبار'],
+            ['خوێ', 'شەکر'], ['تەماتە', 'خەیار'], ['پێڵاو', 'گۆرەوی'], ['دەرگا', 'پەنجەرە'],
+            ['پاس', 'تەکسی'], ['گوڵ', 'درەخت'], ['پەنیر', 'ماست'], ['مریشک', 'قەل'],
+            ['بەفر', 'باران'], ['سپی', 'ڕەش'], ['کەوچک', 'چەتاڵ'], ['قاپ', 'پەرداخ'],
+            ['چاو', 'گوێ'], ['دەست', 'قاچ'], ['سەرین', 'بەطانی'], ['ئاگر', 'دووکەڵ'],
+            ['بەهار', 'پایز'], ['شەو', 'ڕۆژ'], ['گۆرانی', 'مۆسیقا'], ['پۆلیس', 'سەرباز'],
+            ['عەزی', 'تەنوورە'], ['چاکەت', 'پاڵتۆ'], ['کڵاو', 'چاویلکە'], ['تۆیۆتا', 'نیسان'],
+            ['مێرسیدس', 'بی ئێم'], ['شەمەندەفەر', 'کەشتی'], ['بەلەم', 'یەخت'], ['ژووری نوستن', 'چێشتخانە'],
+            ['حەوشە', 'باخچە'], ['قادرمە', 'ئەسانسۆر'], ['میوانخانە', 'گەرماو'], ['تەلەفزیۆن', 'ڕادیۆ'],
+            ['قەنەفە', 'کورسی'], ['سابوون', 'شامپۆ'], ['پەردە', 'فەرش'], ['مێز', 'دۆڵاب'],
+            ['جانتا', 'جزدان'], ['مۆز', 'سێو'], ['پەتاتە', 'تەماتە'], ['شێر', 'پڵنگ'],
+            ['هەڵۆ', 'قەلەڕەش'], ['مەیموون', 'گۆریلا'], ['مار', 'تیمساح'], ['پیاز', 'سیر'],
+            ['قۆخ', 'قەیسی'], ['هەنجیر', 'ترێ'], ['هەنار', 'شلیک'], ['کاڵەک', 'شوتی'],
+            ['نەخۆشخانە', 'دەرمانخانە'], ['زانکۆ', 'قوتابخانە'], ['باخچە', 'پارک'], ['مۆزەخانە', 'کتێبخانە'],
+            ['بازاڕ', 'مۆڵ'], ['چەقۆ', 'مەقەست'], ['ئەڵماس', 'زێڕ'], ['ئاسن', 'پلاستیک'],
+            ['شوشە', 'کاغەز'], ['دەفتەر', 'پێنووس']
+        ];
+
+        function ImposterGame() {
+            const [view, setView] = useState('HOME');
+            const [players, setPlayers] = useState([
+                { id: 1, name: 'یاریزان 1', role: '', word: '', isEliminated: false },
+                { id: 2, name: 'یاریزان 2', role: '', word: '', isEliminated: false },
+                { id: 3, name: 'یاریزان 3', role: '', word: '', isEliminated: false },
+                { id: 4, name: 'یاریزان 4', role: '', word: '', isEliminated: false }
+            ]);
+            const [numImposters, setNumImposters] = useState(1);
+            const [currentPlayerIdx, setCurrentPlayerIdx] = useState(0);
+            const [showSecret, setShowSecret] = useState(false);
+            const [citizenWord, setCitizenWord] = useState('');
+            const [imposterWord, setImposterWord] = useState('');
+            const [lastEliminated, setLastEliminated] = useState(null);
+            const [winner, setWinner] = useState(null);
+            const [confirmVoteId, setConfirmVoteId] = useState(null);
+            const [isVotingAnim, setIsVotingAnim] = useState(false);
+
+            const addPlayer = () => {
+                if (players.length < 10) {
+                    setPlayers([...players, { id: Date.now(), name: `یاریزان ${players.length + 1}`, role: '', word: '', isEliminated: false }]);
+                }
+            };
+
+            const removePlayer = (id) => {
+                if (players.length > 3) {
+                    setPlayers(players.filter(p => p.id !== id));
+                }
+            };
+
+            const updatePlayerName = (id, newName) => {
+                setPlayers(players.map(p => p.id === id ? { ...p, name: newName } : p));
+            };
+
+            const startGame = () => {
+                const randomPair = WORD_PAIRS[Math.floor(Math.random() * WORD_PAIRS.length)];
+                const isFirstCitizen = Math.random() > 0.5;
+                const cWord = isFirstCitizen ? randomPair[0] : randomPair[1];
+                const iWord = isFirstCitizen ? randomPair[1] : randomPair[0];
+                
+                setCitizenWord(cWord);
+                setImposterWord(iWord);
+
+                let shuffledPlayers = [...players].sort(() => 0.5 - Math.random());
+                let newPlayers = shuffledPlayers.map((p, index) => {
+                    const isImposter = index < numImposters;
+                    return { ...p, role: isImposter ? 'imposter' : 'citizen', word: isImposter ? iWord : cWord, isEliminated: false };
+                });
+
+                setPlayers(newPlayers.sort((a, b) => a.id - b.id));
+                setCurrentPlayerIdx(0);
+                setShowSecret(false);
+                setWinner(null);
+                setLastEliminated(null);
+                setConfirmVoteId(null);
+                setIsVotingAnim(false);
+                setView('PASS');
+            };
+
+            const toggleSecret = () => setShowSecret(!showSecret);
+
+            const nextPlayerRound = () => {
+                setShowSecret(false);
+                if (currentPlayerIdx + 1 < players.length) {
+                    setCurrentPlayerIdx(currentPlayerIdx + 1);
+                } else {
+                    setView('DISCUSS');
+                }
+            };
+
+            const handleVote = (playerId) => {
+                const updatedPlayers = players.map(p => p.id === playerId ? { ...p, isEliminated: true } : p);
+                setPlayers(updatedPlayers);
+                
+                const eliminated = updatedPlayers.find(p => p.id === playerId);
+                setLastEliminated(eliminated);
+
+                const remainingImposters = updatedPlayers.filter(p => p.role === 'imposter' && !p.isEliminated).length;
+                const remainingCitizens = updatedPlayers.filter(p => p.role === 'citizen' && !p.isEliminated).length;
+
+                if (remainingImposters === 0) {
+                    setWinner('citizens');
+                    setView('GAME_OVER');
+                } else if (remainingImposters >= remainingCitizens) {
+                    setWinner('imposters');
+                    setView('GAME_OVER');
+                } else {
+                    setView('ROUND_RESULT');
+                }
+            };
+
+            return (
+                <div dir="rtl" className={`min-h-screen font-sans p-4 flex flex-col items-center justify-center transition-colors duration-700 ${
+                  isVotingAnim ? 'bg-red-950' : 'bg-gradient-to-br from-indigo-900 via-purple-900 to-fuchsia-900'
+                }`}>
+                  
+                  {/* HEADER */}
+                  <div className="mb-8 text-center relative z-10">
+                    <h1 className="text-4xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-orange-400 to-pink-500 mb-2 drop-shadow-[0_5px_5px_rgba(0,0,0,0.5)]">
+                      کێ فێڵبازە؟
+                    </h1>
+                    <p className="text-purple-200 text-lg md:text-2xl font-bold">یاری وشە نهێنییەکان</p>
+                  </div>
+
+                  <div className={`w-full max-w-2xl bg-white/10 backdrop-blur-xl rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.3)] overflow-hidden border border-white/20 relative z-10 transition-transform duration-500 ${isVotingAnim ? 'scale-95' : 'scale-100'}`}>
+                    
+                    {/* --- VIEW: HOME --- */}
+                    {view === 'HOME' && (
+                      <div className="p-6 md:p-8 text-white">
+                        <div className="bg-white/10 rounded-2xl p-4 mb-6 border border-white/20 shadow-inner">
+                          <h2 className="text-xl font-bold flex items-center gap-2 mb-3 text-yellow-300">
+                            <Info size={24} /> چۆنیەتی یاریکردن:
+                          </h2>
+                          <ul className="list-disc list-inside space-y-2 text-purple-100 text-sm md:text-base">
+                            <li>هەموو یاریزانێک وشەیەکی پێدەدرێت.</li>
+                            <li>زۆرینە هەمان وشەیان هەیە (هاوڵاتی)، فێڵبازەکە وشەیەکی جیاوازی هەیە!</li>
+                            <li>بە نۆرە وشەیەک بڵێ بۆ وەسفکردنی وشەکەت بەبێ ئاشکراکردنی.</li>
+                            <li>دەنگ بدەن بۆ دەرکردنی ئەو کەسەی گومانتان لێی هەیە.</li>
+                          </ul>
+                        </div>
+
+                        <div className="space-y-4 mb-8">
+                          <div className="flex justify-between items-center text-lg font-bold text-white">
+                            <span>یاریزانەکان ({players.length})</span>
+                            {players.length < 10 && (
+                              <button onClick={addPlayer} className="text-sm bg-pink-600 hover:bg-pink-500 px-4 py-2 rounded-full transition shadow-lg">
+                                + زیادکردن
+                              </button>
+                            )}
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
+                            {players.map((p, i) => (
+                              <div key={p.id} className="flex items-center gap-2 bg-black/20 rounded-xl p-2 border border-white/10">
+                                <div className="bg-purple-600 rounded-lg w-8 h-8 flex items-center justify-center font-bold text-white shadow-sm">
+                                  {i + 1}
+                                </div>
+                                <input 
+                                  type="text" 
+                                  value={p.name}
+                                  onChange={(e) => updatePlayerName(p.id, e.target.value)}
+                                  className="bg-transparent flex-1 outline-none text-white placeholder-purple-300 font-semibold"
+                                  placeholder="ناوی یاریزان..."
+                                />
+                                {players.length > 3 && (
+                                  <button onClick={() => removePlayer(p.id)} className="text-red-400 hover:text-red-300 p-1">
+                                    <UserMinus size={20} />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="bg-white/10 rounded-2xl p-4 mb-8 border border-white/20 flex justify-between items-center shadow-inner">
+                          <div>
+                            <span className="block font-bold text-lg text-white">ژمارەی فێڵبازەکان</span>
+                            <span className="text-xs text-purple-200">دەبێت کەمتر بێت لە نیوەی یاریزانەکان</span>
+                          </div>
+                          <div className="flex items-center gap-4 bg-black/30 rounded-full px-4 py-2 border border-white/10">
+                            <button 
+                              onClick={() => setNumImposters(Math.max(1, numImposters - 1))}
+                              className="text-2xl font-bold text-purple-300 hover:text-white"
+                            >-</button>
+                            <span className="text-xl font-black text-pink-400 w-4 text-center">{numImposters}</span>
+                            <button 
+                              onClick={() => setNumImposters(Math.min(Math.floor((players.length - 1) / 2), numImposters + 1))}
+                              className="text-2xl font-bold text-purple-300 hover:text-white"
+                            >+</button>
+                          </div>
+                        </div>
+
+                        <button 
+                          onClick={startGame}
+                          className="w-full bg-gradient-to-l from-green-400 to-emerald-600 hover:from-green-300 hover:to-emerald-500 text-white text-2xl font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition-transform transform hover:scale-[1.02] shadow-[0_0_30px_rgba(52,211,153,0.4)] border border-green-400/50"
+                        >
+                          <Play size={32} /> دەستپێکردنی یاری
+                        </button>
+                      </div>
+                    )}
+
+                    {/* --- VIEW: PASS --- */}
+                    {view === 'PASS' && (
+                      <div className="p-6 md:p-12 text-center min-h-[400px] flex flex-col justify-center items-center">
+                        <h3 className="text-purple-200 text-lg mb-2 font-bold">تکایە با هەمووان ڕوو وەربگێڕن جگە لە:</h3>
+                        <h2 className="text-5xl font-black text-yellow-300 mb-8 drop-shadow-lg">{players[currentPlayerIdx].name}</h2>
+
+                        <div className="w-full max-w-sm mb-8 relative perspective-1000">
+                          <div className={`w-full bg-black/30 backdrop-blur-md border-2 ${showSecret ? 'border-pink-500 shadow-[0_0_40px_rgba(236,72,153,0.4)]' : 'border-white/20'} rounded-3xl p-8 transition-all duration-300`}>
+                            {showSecret ? (
+                              <div className="animate-fade-in">
+                                <p className="text-purple-200 mb-2">وشە نهێنییەکەت:</p>
+                                <p className="text-5xl font-black text-white mb-4 drop-shadow-md">{players[currentPlayerIdx].word}</p>
+                                <p className="text-sm text-yellow-300 mt-4 flex items-center justify-center gap-1 font-bold">
+                                  <AlertCircle size={18} /> کەس نەزانێت!
+                                </p>
+                              </div>
+                            ) : (
+                              <div>
+                                <ShieldAlert size={64} className="mx-auto text-purple-300 mb-4 opacity-70" />
+                                <p className="text-purple-200 font-bold">کرتە بکە بۆ بینینی وشەکەت</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {!showSecret ? (
+                          <button 
+                            onClick={toggleSecret}
+                            className="w-full max-w-sm bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition shadow-lg border border-pink-400/50"
+                          >
+                            <Eye size={24} /> نیشانبدە
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={nextPlayerRound}
+                            className="w-full max-w-sm bg-white/20 hover:bg-white/30 border border-white/30 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition"
+                          >
+                            <EyeOff size={24} /> بیشارەوە و داهاتوو
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* --- VIEW: DISCUSS --- */}
+                    {view === 'DISCUSS' && (
+                      <div className="p-6 md:p-12 text-center min-h-[400px] flex flex-col justify-center items-center">
+                        <div className="w-28 h-28 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(255,255,255,0.2)]">
+                          <Users size={56} className="text-yellow-300" />
+                        </div>
+                        <h2 className="text-4xl font-black text-white mb-4 drop-shadow-md">کاتی گفتوگۆیە!</h2>
+                        <p className="text-purple-100 text-lg md:text-xl mb-8 max-w-md mx-auto leading-relaxed">
+                          هەر یاریزانێک بە نۆرە بە <span className="text-yellow-300 font-black text-2xl">یەک وشە</span> وەسفی وشە نهێنییەکەی دەکات. پاشان گفتوگۆ بکەن بزانن کێ فێڵبازەکەیە!
+                        </p>
+                        <button 
+                          onClick={() => {
+                            setConfirmVoteId(null);
+                            setView('VOTE');
+                          }}
+                          className="w-full max-w-sm bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-400 hover:to-pink-500 border border-red-400/50 text-white text-xl font-black py-4 rounded-2xl transition shadow-[0_0_30px_rgba(239,68,68,0.4)]"
+                        >
+                          کاتی دەنگدانە
+                        </button>
+                      </div>
+                    )}
+
+                    {/* --- VIEW: VOTE --- */}
+                    {view === 'VOTE' && (
+                      <div className="p-6 md:p-8">
+                        <h2 className="text-3xl font-black text-center text-white mb-2 drop-shadow-md">دەنگدان</h2>
+                        <p className="text-center text-purple-200 mb-8 font-bold">دەنگ بدە بەو کەسەی گومانت لێی هەیە فێڵبازەکە بێت.</p>
+                        
+                        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 transition-all ${isVotingAnim ? 'animate-pulse' : ''}`}>
+                          {players.filter(p => !p.isEliminated).map(p => (
+                            <button
+                              key={p.id}
+                              disabled={isVotingAnim}
+                              onClick={() => {
+                                if (confirmVoteId === p.id) {
+                                  setIsVotingAnim(true);
+                                  setTimeout(() => {
+                                    handleVote(p.id);
+                                    setConfirmVoteId(null);
+                                    setIsVotingAnim(false);
+                                  }, 1200);
+                                } else {
+                                  setConfirmVoteId(p.id);
+                                }
+                              }}
+                              className={`border transition-all duration-300 p-4 rounded-2xl text-lg font-bold flex items-center justify-between group overflow-hidden relative ${
+                                isVotingAnim && confirmVoteId === p.id
+                                  ? 'bg-red-600 border-red-400 text-white scale-105 shadow-[0_0_50px_rgba(239,68,68,1)] z-10'
+                                  : confirmVoteId === p.id 
+                                  ? 'bg-pink-600 border-pink-400 text-white shadow-[0_0_20px_rgba(236,72,153,0.5)]' 
+                                  : 'bg-black/20 hover:bg-black/40 border-white/10 hover:border-white/30 text-white'
+                              }`}
+                            >
+                              <span className="relative z-10">
+                                {isVotingAnim && confirmVoteId === p.id 
+                                  ? 'دەردەکرێت...!' 
+                                  : confirmVoteId === p.id 
+                                  ? 'دڵنیایت؟ (دەنگدان)' 
+                                  : p.name}
+                              </span>
+                              <ShieldAlert className={`relative z-10 transition-colors ${
+                                isVotingAnim && confirmVoteId === p.id ? 'text-white animate-spin'
+                                : confirmVoteId === p.id ? 'text-white animate-bounce' 
+                                : 'text-purple-400 group-hover:text-pink-300'
+                              }`} size={24} />
+                              
+                              {isVotingAnim && confirmVoteId === p.id && (
+                                <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-orange-600 opacity-50 animate-pulse"></div>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* --- VIEW: ROUND RESULT --- */}
+                    {view === 'ROUND_RESULT' && lastEliminated && (
+                      <div className="p-6 md:p-12 text-center min-h-[400px] flex flex-col justify-center items-center">
+                        <h2 className="text-4xl md:text-5xl font-black text-white mb-4 drop-shadow-md">
+                          <span className="text-pink-400">{lastEliminated.name}</span> دەرکرا!
+                        </h2>
+                        
+                        <div className={`text-2xl font-black py-4 px-8 rounded-full mb-8 inline-block border shadow-xl ${
+                          lastEliminated.role === 'imposter' 
+                          ? 'bg-green-500/20 text-green-300 border-green-400/50 shadow-[0_0_40px_rgba(52,211,153,0.3)]' 
+                          : 'bg-red-500/20 text-red-300 border-red-400/50 shadow-[0_0_40px_rgba(239,68,68,0.3)]'
+                        }`}>
+                          {lastEliminated.role === 'imposter' ? 'ئەو فێڵباز بوو! 🎉' : 'ئەو هاوڵاتی بوو! 🤦‍♂️'}
+                        </div>
+
+                        <p className="text-purple-200 mb-8 text-lg font-bold">یارییەکە بەردەوامە، هێشتا فێڵبازی تر ماوە یان هاوڵاتییەکان لە مەترسیدان...</p>
+
+                        <button 
+                          onClick={() => setView('DISCUSS')}
+                          className="w-full max-w-sm bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 border border-blue-400/50 text-white text-xl font-bold py-4 rounded-2xl transition shadow-lg"
+                        >
+                          گەڕانەوە بۆ گفتوگۆ
+                        </button>
+                      </div>
+                    )}
+
+                    {/* --- VIEW: GAME OVER --- */}
+                    {view === 'GAME_OVER' && (
+                      <div className="p-6 md:p-12 text-center flex flex-col justify-center items-center">
+                        <div className="mb-6 relative">
+                          {winner === 'citizens' ? (
+                            <div className="w-28 h-28 bg-green-500/20 backdrop-blur-md rounded-full flex items-center justify-center mx-auto shadow-[0_0_60px_rgba(34,197,94,0.5)] border border-green-400/50">
+                              <CheckCircle size={56} className="text-green-400 drop-shadow-lg" />
+                            </div>
+                          ) : (
+                            <div className="w-28 h-28 bg-red-500/20 backdrop-blur-md rounded-full flex items-center justify-center mx-auto shadow-[0_0_60px_rgba(239,68,68,0.5)] border border-red-400/50">
+                              <ShieldAlert size={56} className="text-red-500 drop-shadow-lg" />
+                            </div>
+                          )}
+                        </div>
+
+                        <h2 className={`text-4xl md:text-5xl font-black mb-2 drop-shadow-md ${winner === 'citizens' ? 'text-green-300' : 'text-red-400'}`}>
+                          {winner === 'citizens' ? 'هاوڵاتییەکان بردیانەوە!' : 'فێڵبازەکان بردیانەوە!'}
+                        </h2>
+                        <p className="text-purple-200 text-lg mb-8 font-bold">یارییەکە کۆتایی هات.</p>
+
+                        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                          <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-3xl shadow-inner">
+                            <p className="text-purple-300 text-sm mb-1 font-bold">وشەی هاوڵاتیان</p>
+                            <p className="text-3xl font-black text-white">{citizenWord}</p>
+                            <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                              {players.filter(p => p.role === 'citizen').map(p => (
+                                <span key={p.id} className="text-sm font-bold bg-black/30 text-purple-100 px-3 py-1 rounded-lg border border-white/10">{p.name}</span>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="bg-red-950/40 backdrop-blur-md border border-red-500/30 p-6 rounded-3xl shadow-inner">
+                            <p className="text-red-300/80 text-sm mb-1 font-bold">وشەی فێڵباز</p>
+                            <p className="text-3xl font-black text-pink-400">{imposterWord}</p>
+                            <div className="mt-4 flex flex-wrap gap-2 justify-center">
+                              {players.filter(p => p.role === 'imposter').map(p => (
+                                <span key={p.id} className="text-sm font-bold bg-red-900/50 text-red-100 px-3 py-1 rounded-lg border border-red-500/30">{p.name}</span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        <button 
+                          onClick={() => setView('HOME')}
+                          className="w-full max-w-sm bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-white text-2xl font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition shadow-[0_0_30px_rgba(245,158,11,0.4)] border border-yellow-300/50"
+                        >
+                          <RefreshCw size={28} /> یاریکردنەوە
+                        </button>
+                      </div>
+                    )}
+
+                  </div>
+                  
+                  <p className="mt-8 text-white/50 text-sm font-bold drop-shadow-md relative z-10">گەشەپێدراوە بۆ یارییەکی خێزانی و هاوڕێیانە</p>
+                </div>
+            );
+        }
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<ImposterGame />);
+    </script>
+</body>
+</html>
